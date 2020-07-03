@@ -12,7 +12,7 @@ def create_network(params):
     # create all neurons
     neurons = []
     id_offset = 0
-    for i, ct in enumerate(params['celltype']):
+    for i, ct in enumerate(params['celltypes']):
         ct_number = params['N'][i]
         locations = params['neuron_distribution'](ct_number)
         neurons_ = [Neuron(ct, j + id_offset, locations[j]) for j in range(ct_number)]
