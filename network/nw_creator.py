@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from network.nw import Neuron, Network
 
 def create_network(params):
