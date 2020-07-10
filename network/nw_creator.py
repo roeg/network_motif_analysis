@@ -21,12 +21,10 @@ def create_network(params):
         id_offset += len(neurons)
 
     # create connection matrix
-    # set up all pairwise locations
-    locations = [n.location for n in neurons]
-    connections = np.zeros((len(locations), len(locations)))
+    connections = np.zeros((len(neurons), len(neurons)))
     connection_pattern = params['connection_pattern']
-    for i in range(len(locations)):
-        for j in range(len(locations)):
-            connections[i, j] = connection_pattern(locations[i], locations[j])
+    for i in range(len(neurons)):
+        for j in range(len(neurons)):
+            connections[i, j] = connection_pattern(neurons[i], neurons[j])
 
     return Network(neurons, connections)

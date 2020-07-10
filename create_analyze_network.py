@@ -8,6 +8,35 @@ import matplotlib.pyplot as plt
 n_neurons = (100, 100)
 celltypes = 'e', 'i'
 
+# combine degenerate triplets (i.e., use symmetries) to 16 total motifs
+# for motif ID graphs, see Figure 6 here: https://www.frontiersin.org/articles/10.3389/fnana.2014.00129/full
+motifs = dict()
+motifs[1] = (0b111111,)
+motifs[2] = (0b101010, 0b010101)
+motifs[3] = (0b111110, 0b111101, 0b111011, 0b110111, 0b101111, 0b011111)
+motifs[4] = (0b110110, 0b111001, 0b011110, 0b101101, 0b100111, 0b011011)
+motifs[5] = (0b110101, 0b011101, 0b010111)
+motifs[6] = (0b111010, 0b101110, 0b101011)
+motifs[7] = (0b101001, 0b100110, 0b011010, 0b010110, 0b011001, 0b100101)
+
+# double connected (i.e., two edges have at least one connection)
+motifs[8] = (0b111100, 0b110011, 0b001111)
+motifs[9] = (0b100100, 0b011000, 0b010001, 0b100010, 0b001001, 0b000110)
+motifs[10] = (0b110100, 0b110001, 0b011100, 0b001101, 0b010011, 0b000111)
+motifs[11] = (0b111000, 0b110010, 0b101100, 0b001110, 0b100011, 0b001011)
+motifs[12] = (0b001010, 0b100001, 0b010100)
+motifs[13] = (0b000101, 0b010010, 0b101000)
+
+# singlet motifs (i.e., one edge has at least one connection)
+motifs[14] = (0b110000, 0b001100, 0b000011)
+motifs[15] = (0b100000, 0b010000, 0b001000, 0b000100, 0b000010, 0b000001)
+motifs[16] = (0b000000,)
+
+n_motifs = 0
+for key, val in motifs.items():
+    n_motifs += len(val)
+assert n_motifs == 64
+
 
 def distribute_neurons(n):
     # let's distribute neurons according to a 3D normal distribution
@@ -15,11 +44,27 @@ def distribute_neurons(n):
     return [sigma * randn(3) for i in range(n)]
 
 
-def decide_connection(x1, x2):
+def decide_connection_distance(neuron1, neuron2):
     # set up connectivity as another normal distribution, only depending on distance between neurons
+    x1 = neuron1.location
+    x2 = neuron2.location
     diff = np.sqrt(np.dot(x1 - x2, x1 - x2))
     scale = 100.0
     threshold = norm.pdf(diff, loc=0.0, scale=scale) * scale
+    return rand() < threshold
+
+
+def decide_connection_distance_type(neuron1, neuron2):
+    # set up connectivity as another normal distribution, only depending on distance between neurons
+    x1 = neuron1.location
+    x2 = neuron2.location
+    diff = np.sqrt(np.dot(x1 - x2, x1 - x2))
+    if neuron1.celltype == 'i' or neuron2.celltype == 'i':
+        scale = 100.0
+        threshold = np.sinc(diff / scale) ** 2
+    else:
+        scale = 100.0
+        threshold = norm.pdf(diff, loc=0.0, scale=scale) * scale
     return rand() < threshold
 
 
@@ -49,19 +94,23 @@ def select_triplets(neuron_table, n_triplets):
 
 def compute_motif_spectrum(triplets, connections_table):
     # encode each triplet as a number (0-63)
-    # TODO: later combine degenerate triplets (i.e., use symmetries) - create LUT
     print('Computing spectrum for %d triplets' % len(triplets))
-    spectrum = np.zeros(64) # histogram of triplet occurrences
+    # spectrum = np.zeros(64) # histogram of triplet occurrences
+    spectrum = np.zeros(16) # histogram of degenerate triplet occurrences
     for t in triplets:
         triplet_code = 0
         t_ = list(t)
-        triplet_code += connections_table.loc[t_[0], t_[1]] * 2 ** 0
-        triplet_code += connections_table.loc[t_[1], t_[0]] * 2 ** 1
-        triplet_code += connections_table.loc[t_[0], t_[2]] * 2 ** 2
-        triplet_code += connections_table.loc[t_[2], t_[0]] * 2 ** 3
-        triplet_code += connections_table.loc[t_[1], t_[2]] * 2 ** 4
-        triplet_code += connections_table.loc[t_[2], t_[1]] * 2 ** 5
-        spectrum[int(triplet_code)] += 1.0
+        triplet_code += connections_table.loc[t_[0], t_[1]] * 0b000001
+        triplet_code += connections_table.loc[t_[1], t_[0]] * 0b000010
+        triplet_code += connections_table.loc[t_[0], t_[2]] * 0b000100
+        triplet_code += connections_table.loc[t_[2], t_[0]] * 0b001000
+        triplet_code += connections_table.loc[t_[1], t_[2]] * 0b010000
+        triplet_code += connections_table.loc[t_[2], t_[1]] * 0b100000
+        # spectrum[int(triplet_code)] += 1.0
+        for key, val in motifs.items():
+            if triplet_code in val:
+                spectrum[key - 1] += 1.0
+
     return spectrum
 
 
@@ -71,7 +120,8 @@ def create_save_network(out_folder):
     params['N'] = n_neurons
     params['celltypes'] = celltypes
     params['neuron_distribution'] = distribute_neurons
-    params['connection_pattern'] = decide_connection
+    # params['connection_pattern'] = decide_connection_distance
+    params['connection_pattern'] = decide_connection_distance_type
 
     network = create_network(params)
     # empirical connection probability
