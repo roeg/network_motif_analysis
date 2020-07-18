@@ -5,8 +5,12 @@ from network.nw_creator import create_network
 from network.nw import load_network
 import matplotlib.pyplot as plt
 
+# network parameters
 n_neurons = (100, 100)
 celltypes = 'e', 'i'
+
+# where to store the network
+folder = '/Users/robert/project_src/network_motif_analysis/data/network'
 
 # combine degenerate triplets (i.e., use symmetries) to 16 total motifs
 # for motif ID graphs, see Figure 6 here: https://www.frontiersin.org/articles/10.3389/fnana.2014.00129/full
@@ -40,7 +44,7 @@ assert n_motifs == 64
 
 def distribute_neurons(n):
     # let's distribute neurons according to a 3D normal distribution
-    sigma = 200.0
+    sigma = 300.0
     return [sigma * randn(3) for i in range(n)]
 
 
@@ -60,11 +64,11 @@ def decide_connection_distance_type(neuron1, neuron2):
     x2 = neuron2.location
     diff = np.sqrt(np.dot(x1 - x2, x1 - x2))
     if neuron1.celltype == 'i' or neuron2.celltype == 'i':
-        scale = 100.0
-        threshold = np.sinc(diff / scale) ** 2
+        scale = 50.0
+        threshold = 500 * np.sinc(diff / scale) ** 2
     else:
-        scale = 100.0
-        threshold = norm.pdf(diff, loc=0.0, scale=scale) * scale
+        scale = 200.0
+        threshold = 20 * norm.pdf(diff, loc=0.0, scale=scale) * scale
     return rand() < threshold
 
 
@@ -177,7 +181,6 @@ def analyze_saved_network(nw_folder, triplet_samples=None):
 
 
 if __name__ == '__main__':
-    folder = '/Users/robert/project_src/network_motif_analysis/data/network'
     n_triplet_samples = 10000
     create_save_network(folder)
     analyze_saved_network(folder, n_triplet_samples)
